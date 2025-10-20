@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EMS Analyzer">
+    <title>EMS Call Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 min-h-screen">
+    <div class="max-w-md mx-auto pb-8">
+        <!-- Header -->
+        <header class="text-center py-4 px-4 bg-blue-950 bg-opacity-50 relative sticky top-0 z-10">
+            <button id="settingsBtn" class="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-blue-200">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+            <h1 class="text-2xl font-bold text-white mb-1">EMS Call Analyzer</h1>
+            <p class="text-sm text-blue-200">AI-Powered Analysis</p>
+        </header>
+
+        <!-- Error Message -->
+        <div id="errorMsg" class="hidden mx-4 mt-4 p-3 bg-red-100 border border-red-400 rounded-lg flex items-start gap-2">
+            <i data-lucide="alert-circle" class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"></i>
+            <p class="text-sm text-red-800"></p>
+        </div>
+
+        <!-- Processing Message -->
+        <div id="processingMsg" class="hidden mx-4 mt-4 p-4 bg-blue-100 border border-blue-400 rounded-lg flex items-center gap-3">
+            <i data-lucide="loader" class="w-5 h-5 text-blue-600 animate-spin"></i>
+            <div>
+                <p class="text-sm font-semibold text-blue-800">Processing your call...</p>
+                <p class="text-xs text-blue-600">Transcribing audio and generating analysis</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-4 p-4">
+            <!-- Recording Panel -->
+            <div class="bg-white rounded-lg shadow-lg p-4">
+                <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <i data-lucide="mic" class="w-4 h-4"></i>
+                    Record Call
+                </h2>
+                
+                <div class="flex flex-col items-center gap-3">
+                    <div class="w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
+                        <i id="micIcon" data-lucide="mic" class="w-12 h-12 text-white"></i>
+                    </div>
+
+                    <div id="recordingTime" class="hidden text-center">
+                        <div class="text-2xl font-bold text-red-600 mb-1">0:00</div>
+                        <div class="text-xs text-gray-500">Recording...</div>
+                    </div>
+
+                    <button id="recordBtn" class="w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors text-sm bg-blue-600 hover:bg-blue-700 text-white active:bg-blue-800">
+                        <i data-lucide="mic" class="w-4 h-4"></i>
+                        Start Recording
+                    </button>
+                </div>
+
+                <div class="mt-4 pt-4 border-t">
+                    <h3 class="font-semibold text-sm mb-2 flex items-center gap-2">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        Recent Calls (<span id="callCount">0</span>)
+                    </h3>
+                    <div id="callsList" class="space-y-2 max-h-48 overflow-y-auto">
+                        <div class="text-center text-gray-400 py-6 text-sm">No calls recorded yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Panel -->
+            <div id="contentPanel" class="bg-white rounded-lg shadow-lg p-8 text-center">
+                <i data-lucide="file-text" class="w-12 h-12 text-gray-300 mx-auto mb-3"></i>
+                <h3 class="text-base font-semibold text-gray-600 mb-2">No Call Selected</h3>
+                <p class="text-sm text-gray-500">Set your OpenAI API key in settings, then record a call</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-screen overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">Settings</h2>
+                <button id="closeSettings" class="text-gray-500 hover:text-gray-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">OpenAI API Key</label>
+                    <input type="password" id="apiKeyInput" placeholder="sk-..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <p class="text-xs text-gray-500 mt-2">Your API key is stored only in memory and never sent anywhere except OpenAI.</p>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h3 class="font-semibold text-sm text-blue-900 mb-2">How to get your API key:</h3>
+                    <ol class="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                        <li>Go to platform.openai.com</li>
+                        <li>Sign up or log in</li>
+                        <li>Navigate to API keys section</li>
+                        <li>Create a new secret key</li>
+                        <li>Copy and paste it above</li>
+                    </ol>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <h3 class="font-semibold text-sm text-yellow-900 mb-1">Estimated Costs:</h3>
+                    <p class="text-xs text-yellow-800">• 5-min call: ~$0.03 (Whisper) + ~$0.05 (GPT-4o-mini) = ~$0.08 total</p>
+                    <p class="text-xs text-yellow-800 mt-1">New accounts get $5 free credits (60+ calls)</p>
+                </div>
+
+                <button id="saveSettings" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm">
+                    Save & Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        let apiKey = '';
+        let isRecording = false;
+        let recordingTime = 0;
+        let timerInterval = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let calls = [];
+        let selectedCallId = null;
+
+        // Settings Modal
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            document.getElementById('apiKeyInput').value = apiKey;
+        });
+
+        document.getElementById('closeSettings').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('hidden');
+        });
+
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            apiKey = document.getElementById('apiKeyInput').value.trim();
+            document.getElementById('settingsModal').classList.add('hidden');
+            if (apiKey) showError('');
+        });
+
+        // Recording
+        document.getElementById('recordBtn').addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        audioChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    processCall(blob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordingTime = 0;
+                updateRecordingUI();
+                showError('');
+
+                timerInterval = setInterval(() => {
+                    recordingTime++;
+                    updateRecordingTime();
+                }, 1000);
+            } catch (err) {
+                showError('Error accessing microphone. Please grant permission.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                clearInterval(timerInterval);
+                updateRecordingUI();
+            }
+        }
+
+        function updateRecordingUI() {
+            const btn = document.getElementById('recordBtn');
+            const micIcon = document.getElementById('micIcon');
+            const timeEl = document.getElementById('recordingTime');
+            
+            if (isRecording) {
+                btn.innerHTML = '<i data-lucide="square" class="w-4 h-4"></i> Stop Recording';
+                btn.className = 'w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors text-sm bg-red-600 hover:bg-red-700 text-white active:bg-red-800';
+                micIcon.classList.add('animate-pulse');
+                timeEl.classList.remove('hidden');
+            } else {
+                btn.innerHTML = '<i data-lucide="mic" class="w-4 h-4"></i> Start Recording';
+                btn.className = 'w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors text-sm bg-blue-600 hover:bg-blue-700 text-white active:bg-blue-800';
+                micIcon.classList.remove('animate-pulse');
+                timeEl.classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function updateRecordingTime() {
+            const mins = Math.floor(recordingTime / 60);
+            const secs = recordingTime % 60;
+            const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+            document.querySelector('#recordingTime div').textContent = timeStr;
+        }
+
+        async function processCall(audioBlob) {
+            if (!apiKey) {
+                showError('Please set your OpenAI API key in settings first.');
+                return;
+            }
+
+            showProcessing(true);
+            showError('');
+
+            try {
+                const transcription = await transcribeAudio(audioBlob);
+                const analysis = await analyzeCall(transcription);
+                
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const duration = formatTime(recordingTime);
+                
+                const call = {
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleString(),
+                    duration: duration,
+                    audioUrl: audioUrl,
+                    transcription: transcription,
+                    narrative: analysis.narrative,
+                    critique: analysis.critique
+                };
+
+                calls.unshift(call);
+                updateCallsList();
+                selectCall(call.id);
+            } catch (err) {
+                showError(err.message || 'Error processing call. Please check your API key and try again.');
+            } finally {
+                showProcessing(false);
+            }
+        }
+
+        async function transcribeAudio(audioBlob) {
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.webm');
+            formData.append('model', 'whisper-1');
+
+            const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'Transcription failed');
+            }
+
+            const data = await response.json();
+            return data.text;
+        }
+
+        async function analyzeCall(transcription) {
+            const prompt = `You are an experienced EMS supervisor reviewing a call recording transcription. Analyze this EMS call and provide:
+
+1. A detailed narrative summary in proper EMS documentation format
+2. Key points from the call
+3. Strengths demonstrated by the responder
+4. Areas for improvement
+5. Professional tips for better documentation and patient care
+
+Transcription:
+${transcription}
+
+Return your response in this JSON format:
+{
+  "narrative": {
+    "summary": "Brief title of the call",
+    "details": "Detailed narrative in proper EMS format with timeline, patient presentation, interventions, and outcome",
+    "keyPoints": ["point1", "point2", "point3", "point4", "point5"]
+  },
+  "critique": {
+    "strengths": ["strength1", "strength2", "strength3", "strength4", "strength5"],
+    "improvements": ["improvement1", "improvement2", "improvement3", "improvement4", "improvement5"],
+    "tips": ["tip1", "tip2", "tip3", "tip4"]
+  }
+}`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o-mini',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are an experienced EMS supervisor and educator. Provide constructive, professional feedback on EMS calls.'
+                        },
+                        {
+                            role: 'user',
+                            content: prompt
+                        }
+                    ],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.7
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'Analysis failed');
+            }
+
+            const data = await response.json();
+            return JSON.parse(data.choices[0].message.content);
+        }
+
+        function updateCallsList() {
+            document.getElementById('callCount').textContent = calls.length;
+            const list = document.getElementById('callsList');
+            
+            if (calls.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-400 py-6 text-sm">No calls recorded yet</div>';
+                return;
+            }
+
+            list.innerHTML = calls.map(call => `
+                <button onclick="selectCall(${call.id})" class="w-full text-left p-2 rounded-lg transition-colors ${selectedCallId === call.id ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50 active:bg-gray-200'}">
+                    <div class="text-xs font-medium">${call.timestamp}</div>
+                    <div class="text-xs text-gray-500">Duration: ${call.duration}</div>
+                </button>
+            `).join('');
+        }
+
+        function selectCall(callId) {
+            selectedCallId = callId;
+            const call = calls.find(c => c.id === callId);
+            if (!call) return;
+            updateCallsList();
+            displayCall(call);
+        }
+
+        function displayCall(call) {
+            const panel = document.getElementById('contentPanel');
+            panel.innerHTML = `
+                <div class="space-y-4 text-left">
+                    <!-- Transcription -->
+                    <div class="bg-white rounded-lg shadow-lg p-4">
+                        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            Transcription
+                        </h2>
+                        <div class="mb-3">
+                            <audio controls src="${call.audioUrl}" class="w-full h-8"></audio>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto">
+                            <p class="text-xs text-gray-700 leading-relaxed">${call.transcription}</p>
+                        </div>
+                    </div>
+
+                    <!-- Narrative -->
+                    <div class="bg-white rounded-lg shadow-lg p-4">
+                        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            Call Narrative
+                        </h2>
+                        <div class="mb-3">
+                            <h3 class="font-semibold text-base mb-2">${call.narrative.summary}</h3>
+                            <p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">${call.narrative.details}</p>
+                        </div>
+                        <div class="bg-blue-50 rounded-lg p-3">
+                            <h4 class="font-semibold text-sm mb-2">Key Points:</h4>
+                            <ul class="space-y-1">
+                                ${call.narrative.keyPoints.map(point => `
+                                    <li class="flex items-start gap-2">
+                                        <span class="text-blue-600 mt-0.5 text-sm">•</span>
+                                        <span class="text-xs text-gray-700">${point}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Critique -->
+                    <div class="bg-white rounded-lg shadow-lg p-4">
+                        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                            Analysis & Feedback
+                        </h2>
+                        <div class="space-y-4">
+                            <!-- Strengths -->
+                            <div>
+                                <h3 class="font-semibold text-green-700 mb-2 flex items-center gap-2 text-sm">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    Strengths
+                                </h3>
+                                <div class="space-y-2">
+                                    ${call.critique.strengths.map(strength => `
+                                        <div class="flex items-start gap-2 bg-green-50 p-2 rounded-lg">
+                                            <span class="text-green-600 font-bold text-xs">✓</span>
+                                            <span class="text-xs text-gray-700">${strength}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Improvements -->
+                            <div>
+                                <h3 class="font-semibold text-orange-700 mb-2 flex items-center gap-2 text-sm">
+                                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                                    Areas for Improvement
+                                </h3>
+                                <div class="space-y-2">
+                                    ${call.critique.improvements.map(improvement => `
+                                        <div class="flex items-start gap-2 bg-orange-50 p-2 rounded-lg">
+                                            <span class="text-orange-600 font-bold text-xs">→</span>
+                                            <span class="text-xs text-gray-700">${improvement}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- Tips -->
+                            <div>
+                                <h3 class="font-semibold text-blue-700 mb-2 text-sm">💡 Professional Tips</h3>
+                                <div class="space-y-2">
+                                    ${call.critique.tips.map(tip => `
+                                        <div class="bg-blue-50 p-2 rounded-lg border-l-4 border-blue-500">
+                                            <span class="text-xs text-gray-700">${tip}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            if (msg) {
+                el.querySelector('p').textContent = msg;
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function showProcessing(show) {
+            const el = document.getElementById('processingMsg');
+            el.classList.toggle('hidden', !show);
+            lucide.createIcons();
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>
